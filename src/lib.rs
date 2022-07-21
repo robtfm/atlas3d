@@ -60,6 +60,7 @@ pub enum Slot {
     Existing(UVec3),
 }
 
+#[derive(Clone)]
 pub struct AtlasPage<H: Eq + Hash + Clone> {
     dim: UVec3,
     live_items: HashMap<H, AtlasInfo>,
