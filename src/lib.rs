@@ -1,5 +1,5 @@
 #![feature(let_else)]
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 use glam::UVec3;
 
 #[cfg(test)]
@@ -11,9 +11,9 @@ mod tests {
     fn insert_stuff() {
         let mut page = AtlasPage::new(UVec3::splat(10));
 
-        let h0 = page.create_handle();
-        let h1 = page.create_handle();
-        let h2 = page.create_handle();
+        let h0 = 0;
+        let h1 = 1;
+        let h2 = 2;
 
         // first item at 0
         assert_eq!(page.insert(h0, UVec3::splat(6)), Slot::New(UVec3::ZERO));
@@ -60,24 +60,22 @@ pub enum Slot {
     Existing(UVec3),
 }
 
-pub struct AtlasPage {
-    counter: usize,
+pub struct AtlasPage<H: Eq + Hash + Clone> {
     dim: UVec3,
-    live_items: HashMap<AtlasHandle, AtlasInfo>,
-    dead_items: HashMap<AtlasHandle, AtlasInfo>,
+    live_items: HashMap<H, AtlasInfo>,
+    dead_items: HashMap<H, AtlasInfo>,
 }
 
-impl AtlasPage {
+impl<H: Eq + Hash + Clone> AtlasPage<H> {
     pub fn new(dim: UVec3) -> Self {
         Self {
             dim,
-            counter: Default::default(),
             live_items: Default::default(),
             dead_items: Default::default(),
         }
     }
 
-    fn measure(&self, pos: UVec3, size: UVec3) -> Option<(u32, Vec<AtlasHandle>)> {
+    fn measure(&self, pos: UVec3, size: UVec3) -> Option<(u32, Vec<H>)> {
         // check if we fit within the page
         if (pos + size).cmpgt(self.dim).any() {
             return None;
@@ -131,19 +129,14 @@ impl AtlasPage {
             let intersects = new_lhs.cmplt(cur_rhs) & new_rhs.cmpgt(cur_lhs);
 
             if intersects.all() {
-                to_clear.push(*dead_handle);
+                to_clear.push(dead_handle.clone());
             }
         }
 
         Some((distance.x + distance.y + distance.z, to_clear))
     }
 
-    pub fn create_handle(&mut self) -> AtlasHandle {
-        self.counter += 1;
-        AtlasHandle(self.counter)
-    }
-
-    pub fn insert(&mut self, handle: AtlasHandle, size: UVec3) -> Slot {
+    pub fn insert(&mut self, handle: H, size: UVec3) -> Slot {
         if let Some(info) = self.live_items.get(&handle) {
             assert_eq!(size, info.size);
             return Slot::Existing(info.position);
@@ -187,11 +180,11 @@ impl AtlasPage {
         }
     }
 
-    pub fn get(&self, handle: AtlasHandle) -> Option<AtlasInfo> {
+    pub fn get(&self, handle: H) -> Option<AtlasInfo> {
         self.live_items.get(&handle).copied()
     }
 
-    pub fn remove(&mut self, handle: AtlasHandle) {
+    pub fn remove(&mut self, handle: H) {
         if let Some(info) = self.live_items.remove(&handle) {
             self.dead_items.insert(handle, info);
         }
