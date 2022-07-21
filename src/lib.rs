@@ -184,9 +184,21 @@ impl<H: Eq + Hash + Clone> AtlasPage<H> {
         self.live_items.get(&handle).copied()
     }
 
+    // mark as dead, keep around in case it gets added back
     pub fn remove(&mut self, handle: H) {
         if let Some(info) = self.live_items.remove(&handle) {
             self.dead_items.insert(handle, info);
         }
+    }
+
+    // remove without keeping in reserve
+    pub fn purge(&mut self, handle: H) {
+        self.live_items.remove(&handle);
+        self.dead_items.remove(&handle);
+    }
+
+    // mark all handles as dead
+    pub fn clear(&mut self) {
+        self.dead_items.extend(self.live_items.drain())
     }
 }
