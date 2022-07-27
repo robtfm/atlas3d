@@ -163,10 +163,13 @@ impl<H: Eq + Hash + Clone> AtlasPage<H> {
         }
 
         if let Some(info) = self.dead_items.remove(&handle) {
-            // back from the dead
-            assert_eq!(size, info.size);
-            self.live_items.insert(handle, info);
-            return Slot::Existing(info.position);
+            if size == info.size {
+                // back from the dead
+                self.live_items.insert(handle, info);
+                return Slot::Existing(info.position);
+            }
+
+            // otherwise remove from dead and carry on
         }
 
         let (mut best_point, mut best_distance, mut best_evict_count, mut evictions) =
